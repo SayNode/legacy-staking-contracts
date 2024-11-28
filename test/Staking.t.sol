@@ -76,10 +76,11 @@ contract StakingTest is Test {
         // 3. stake is successful
         vm.prank(OwnerWallet);
         staking.stake(Alice, 10*10**1);
-        (uint256 stakeInitTime, uint256 stakeAmount, uint256 monthsRewarded) = staking.getStakingInfo(Alice);
+        (uint256 stakeInitTime, uint256 stakeAmount, uint256 monthsRewarded, uint256 rewardsReceived) = staking.getStakingInfo(Alice);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, 10*10**1);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
         // 4. staker does not already have an active stake
         vm.expectRevert(Staking.StakerAlreadyExists.selector);
@@ -90,39 +91,43 @@ contract StakingTest is Test {
         vm.warp(block.timestamp + 10 days);
         vm.prank(OwnerWallet);
         staking.stake(Bob, 20*10**18);
-        (stakeInitTime, stakeAmount, monthsRewarded) = staking.getStakingInfo(Bob);
+        (stakeInitTime, stakeAmount, monthsRewarded, rewardsReceived) = staking.getStakingInfo(Bob);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, 20*10**18);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
     }
 
     /* Test stake:
-    *   1. staker is not the owner
-    *   2. stake amount is greater than 0
-    *   3. stake is successful
-    *   4. staker does not already have an active stake 
-    *   5. test single stake after the successful multiple stake
-    *   6. test multiple stake again
-    *   7. test unstake and calc rewards by calling the testCalcRewardandUnstakeandUnstake function
+    *   Phase 1. staker is not the owner
+    *   Phase 2. stake amount is greater than 0
+    *   Phase 3. stake is successful
+    *   Phase 4. staker does not already have an active stake 
+    *   Phase 5. test single stake after the successful multiple stake
+    *   Phase 6. test multiple stake again
+    *   Phase 7. test unstake and calc rewards by calling the testCalcRewardandUnstakeandUnstake function
     */
     function testMultipleStake(uint256 amount0, uint256 amount1, 
                                 uint256 amount2, uint256 amount3, 
                                 uint256 amount4, uint256 amount5, 
                                 uint256 amount6) public {
-        uint256 maxAMountPerStake = totalSupply/2/7;
-        vm.assume(amount0 > 1000 && amount0 < 72*10**18);
-        vm.assume(amount1 > 1000 && amount1 < 72*10**18);
-        vm.assume(amount2 > 1000 && amount2 < 72*10**18);
-        vm.assume(amount3 > 1000 && amount3 < 72*10**18);
-        vm.assume(amount4 > 1000 && amount4 < 72*10**18);
-        vm.assume(amount5 > 1000 && amount5 < 72*10**18);
-        vm.assume(amount6 > 1000 && amount6 < 72*10**18);
 
+        // Fuzz testing variables. The amount should be greater than 1000 and less than half of the total supply (split between the 7 stakers)
+        uint256 maxAMountPerStake = totalSupply/2/7;
+        vm.assume(amount0 > 1000 && amount0 < maxAMountPerStake);
+        vm.assume(amount1 > 1000 && amount1 < maxAMountPerStake);
+        vm.assume(amount2 > 1000 && amount2 < maxAMountPerStake);
+        vm.assume(amount3 > 1000 && amount3 < maxAMountPerStake);
+        vm.assume(amount4 > 1000 && amount4 < maxAMountPerStake);
+        vm.assume(amount5 > 1000 && amount5 < maxAMountPerStake);
+        vm.assume(amount6 > 1000 && amount6 < maxAMountPerStake);
+
+        // Approve the staking contract to get the tokens from the Owner
         vm.prank(OwnerWallet);
         mockERC20.approve(address(staking), 2*(amount0+amount1+amount2+amount3)*10**18);
 
-        // 1. staker is not the owner
+        // Phase 1. staker is not the owner
         address[] memory stakerAddresses = new address[](4);
         stakerAddresses[0] = address(Alice);
         stakerAddresses[1] = address(Bob);
@@ -155,7 +160,7 @@ contract StakingTest is Test {
         staking.stakeMultiple(stakerAddresses, stakeAmounts);
 
 
-        // 2. stake amount is greater than 1000
+        // Phase 2. stake amount is less than 1000
         stakeAmounts[2] =  10;
 
         vm.expectRevert(Staking.AmountMustBeBiggerThanaThousand.selector);
@@ -164,34 +169,38 @@ contract StakingTest is Test {
 
         // Save the block before any staking for the testing of the rewards
         _initBlockTime = block.timestamp;
-        console.log("initBlockTime!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!: ", _initBlockTime);
 
-        // 3. stake is successful
+        // Phase 3. stake is successful
         stakeAmounts[2] =  amount2;
 
         vm.prank(OwnerWallet);
         staking.stakeMultiple(stakerAddresses, stakeAmounts);
-        (uint256 stakeInitTime, uint256 stakeAmount, uint256 monthsRewarded) = staking.getStakingInfo(Alice);
+
+        (uint256 stakeInitTime, uint256 stakeAmount, uint256 monthsRewarded, uint256 rewardsReceived) = staking.getStakingInfo(Alice);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, amount0);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
-        (stakeInitTime, stakeAmount, monthsRewarded) = staking.getStakingInfo(Bob);
+        (stakeInitTime, stakeAmount, monthsRewarded, rewardsReceived) = staking.getStakingInfo(Bob);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, amount1);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
-        (stakeInitTime, stakeAmount, monthsRewarded) = staking.getStakingInfo(Charlie);
+        (stakeInitTime, stakeAmount, monthsRewarded, rewardsReceived) = staking.getStakingInfo(Charlie);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, amount2);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
-        (stakeInitTime, stakeAmount, monthsRewarded) = staking.getStakingInfo(Dylan);
+        (stakeInitTime, stakeAmount, monthsRewarded, rewardsReceived) = staking.getStakingInfo(Dylan);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, amount3);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
-        // 4. staker does not already have an active stake
+        // Phase 4. staker does not already have an active stake
         address[] memory secondStakerAddresses = new address[](3);
         secondStakerAddresses[0] = address(Eckhart);
         secondStakerAddresses[1] = address(Bob);
@@ -202,21 +211,24 @@ contract StakingTest is Test {
         secondStakeAmounts[2] =  amount5;
 
         vm.startPrank(OwnerWallet);
-        mockERC20.approve(address(staking), 2*(2*amount4+amount5)*10**18);
+        mockERC20.approve(address(staking), 2*(2*amount4+amount5)*10**18); //approve more tokens
         vm.expectRevert(Staking.StakerAlreadyExists.selector);
         staking.stakeMultiple(secondStakerAddresses, secondStakeAmounts);
         vm.stopPrank();
 
-        // 5. test single stake after the multiple - stake to Eckhart as well, 20 days latter
+        // Phase 5. test single stake after the multiple - stake to Eckhart as well, 20 days latter
         vm.warp(block.timestamp + 30 days);
+
         vm.prank(OwnerWallet);
         staking.stake(Eckhart, amount4);
-        (stakeInitTime, stakeAmount, monthsRewarded) = staking.getStakingInfo(Eckhart);
+
+        (stakeInitTime, stakeAmount, monthsRewarded, rewardsReceived) = staking.getStakingInfo(Eckhart);
         assertEq(stakeInitTime, block.timestamp);
         assertEq(stakeAmount, amount4);
         assertEq(monthsRewarded, 0);
+        assertEq(rewardsReceived, 0);
 
-        // 6. test multiple stake again
+        // Phase 6. test multiple stake again
         address[] memory thirdStakerAddresses = new address[](2);
         thirdStakerAddresses[0] = address(Frida);
         thirdStakerAddresses[1] = address(Gabriella);
@@ -236,23 +248,32 @@ contract StakingTest is Test {
 
     }
 
-    // Situation:
-    // 1. Alice, Bob, Charlie and Dylan stake 10, 20, 30 and 40.8 tokens respectively and 30 days have passed
-    // 2. Eckhart staked 6 tokens at the present time
-    // 3. Frida staked 1 token at the present time
-    // 4. Gabriella staked 2 tokens at the present time
-    function testCalcRewardandUnstake(
-                                        uint256 amount0, uint256 amount1, 
+    /* Test calc rewards and unstake:
+    * Phase 1. 1 month passed for the first 4 stakers and 0 for the other 3
+    * Phase 2. 120 days (4 months) have passed since the first 4 stakes and 90 for the other 3
+    * Phase 3. 210 days (7 months) have passed since the first 4 stakes and 180 for the other 3
+    * Phase 4. 330 days (11 months) have passed since the first 4 stakes and 300 (10 months) for the other 3
+    * Phase 5. 1080 days (36 months) have passed since the first 4 stakes and 1050 (35 months) for the other 3
+    * Phase 6. 1110 days (37 months) have passed since the first 4 stakes and 1080 (36 months) for the other 3
+    */
+    function testCalcRewardandUnstake(uint256 amount0, uint256 amount1, 
                                         uint256 amount2, uint256 amount3, 
                                         uint256 amount4, uint256 amount5, 
-                                        uint256 amount6) internal {
+                                        uint256 amount6) 
+                                        internal {
 
+        // Get back the block time before the staking
         uint256 initBlockTime = _initBlockTime;
 
+        // Establish stakers and amounts
         address[7] memory stakerAddresses = [Alice, Bob, Charlie, Dylan, Eckhart, Frida, Gabriella];
         uint256[7] memory stakerAmounts = [amount0, amount1, amount2, amount3, amount4, amount5, amount6];
         (uint256 reward, uint256 monthsElapsed, uint256 rewardableMonths) = (0, 0, 0);
 
+        // Phase 1:
+        // - 30 days have passed since the first 4 stakes and 0 for the other 3
+        // - Since the 3 months lock period is not over, no rewards can be claimed
+        vm.warp(initBlockTime + 1*30 days);// simulate a month since the first stakes
         for(uint i = 0; i < stakerAddresses.length; i++){
             vm.expectRevert(Staking.LockPeriodNotOver.selector);
             (reward, monthsElapsed, rewardableMonths) = staking.calculateReward(stakerAddresses[i]);
@@ -271,7 +292,7 @@ contract StakingTest is Test {
                 (reward, monthsElapsed, rewardableMonths) = staking.calculateReward(stakerAddresses[i]);
                 assertEq(4, monthsElapsed);
                 assertEq(1, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
             }
         }
 
@@ -285,11 +306,11 @@ contract StakingTest is Test {
             if(i>=4){
                 assertEq(6, monthsElapsed);
                 assertEq(3, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
             }else{
                 assertEq(7, monthsElapsed);
                 assertEq(4, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
 
                 vm.prank(stakerAddresses[i]);
                 staking.unstake();
@@ -308,11 +329,11 @@ contract StakingTest is Test {
             if(i>=4){
                 assertEq(10, monthsElapsed);
                 assertEq(7, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
             }else{
                 assertEq(11, monthsElapsed);
                 assertEq(4, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
 
                 vm.prank(stakerAddresses[i]);
                 staking.unstake();
@@ -329,7 +350,7 @@ contract StakingTest is Test {
             if(i>=4){
                 assertEq(35, monthsElapsed);
                 assertEq(32, rewardableMonths);
-                assertApproxEqAbs(reward, 3*stakerAmounts[i]*rewardableMonths/100, 10);
+                assertEq(reward, 3*stakerAmounts[i]*rewardableMonths/100);
 
                 vm.prank(stakerAddresses[i]);
                 staking.unstake();
