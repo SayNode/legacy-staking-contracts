@@ -21,6 +21,7 @@ contract Staking is Ownable {
         uint8 monthsRewarded;
         uint32 stakeInitTime;
         uint256 stakeAmount;
+        uint256 rewardsReceived;
     }
 
     // State variables
@@ -86,7 +87,7 @@ contract Staking is Ownable {
         IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
         // Create new staker instance and map it to staker address
-        Staker memory newStaker = Staker(0, uint32(block.timestamp), stakeAmount);
+        Staker memory newStaker = Staker(0, uint32(block.timestamp), stakeAmount, 0);
         stakingInfo[stakeRecipient] = newStaker;
 
         // Add staker address to stakersAddresses array
@@ -129,7 +130,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         }
 
         // Create new staker instance and map it to the recipient address
-        Staker memory newStaker = Staker(0, uint32(block.timestamp), amount);
+        Staker memory newStaker = Staker(0, uint32(block.timestamp), amount, 0);
         stakingInfo[recipient] = newStaker;
 
         // Add recipient address to stakersAddresses array
@@ -178,6 +179,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         (uint256 reward, uint256 monthsElapsed, uint256 rewardableMonths) = calculateReward(msg.sender);
 
         stakingInfo[msg.sender].monthsRewarded += uint8(rewardableMonths);
+        stakingInfo[msg.sender].rewardsReceived += reward;
 
         // Transfer the reward and the stake back to the staker
         IERC20(token).transfer(msg.sender, reward);
@@ -235,10 +237,10 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         uint256 rewardableMonths = monthsElapsed - LOCK_PERIOD_MONTHS - monthsRewarded; //months that can be rewarded
         uint256 reward = (stakingInfo[staker].stakeAmount * MONTHLY_REWARD_PERCENTAGE * rewardableMonths) / 100 ; //reward for the rewardable months
 
-        // If the staker has been staking for 3 years, add the stake amount and the residual (1% since we give 3% for 33 months) 
+        // If the staker has been staking for 3 years, add the stake amount and the residual (what might be left from division rounding)
         //to the reward to complete the 100% reward
         if (monthsElapsed >= 36){
-            uint256 residual = stakingInfo[staker].stakeAmount - (stakingInfo[staker].stakeAmount * MONTHLY_REWARD_PERCENTAGE * 33) / 100;
+            uint256 residual = stakingInfo[staker].stakeAmount - reward - stakingInfo[staker].rewardsReceived; 
             reward = reward + stakingInfo[staker].stakeAmount + residual;
         }
 
@@ -254,6 +256,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
     * @return stakeInitTimes Array of stake initialization timestamps corresponding to each staker.
     * @return stakeAmounts Array of stake amounts for each staker.
     * @return monthsRewardedArray Array of months rewarded for each staker.
+    * @return rewardsReceived Array of rewards received for each staker.
     *
     * Requirements:
     * - The contract must have at least one staker stored in the `stakersAddresses` array.
@@ -261,16 +264,17 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
     * Example:
     * Assume the following data:
     * - `stakersAddresses` contains [0x123, 0x456].
-    * - `stakingInfo[0x123]` has {monthsRewarded: 6, stakeInitTime: 1622505600, stakeAmount: 1000}.
-    * - `stakingInfo[0x456]` has {monthsRewarded: 3, stakeInitTime: 1625097600, stakeAmount: 500}.
+    * - `stakingInfo[0x123]` has {monthsRewarded: 6, stakeInitTime: 1622505600, stakeAmount: 1000, rewardsReceived: 10}.
+    * - `stakingInfo[0x456]` has {monthsRewarded: 3, stakeInitTime: 1625097600, stakeAmount: 500, rewardsReceived: 2}.
     *
     * The function will return:
     * - monthsRewardedArray: [6, 3].
     * - addresses: [0x123, 0x456].
     * - stakeInitTimes: [1622505600, 1625097600].
     * - stakeAmounts: [1000, 500].
+    * - rewardsReceived: [10, 2].
     */
-    function getAllStakerDetails() public view returns (address[] memory, uint8[] memory, uint64[] memory, uint256[] memory) {
+    function getAllStakerDetails() public view returns (address[] memory, uint8[] memory, uint64[] memory, uint256[] memory, uint256[] memory) {
         uint256 count = stakersAddresses.length;
 
         // Arrays to store the result
@@ -278,6 +282,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         uint8[] memory monthsRewardedArray = new uint8[](count);
         uint64[] memory stakeInitTimes = new uint64[](count);
         uint256[] memory stakeAmounts = new uint256[](count);
+        uint256[] memory rewardsReceived = new uint256[](count);
 
         // Loop through all staker addresses
         for (uint256 i = 0; i < count; i++) {
@@ -289,10 +294,11 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
             monthsRewardedArray[i] = staker.monthsRewarded;
             stakeInitTimes[i] = staker.stakeInitTime;
             stakeAmounts[i] = staker.stakeAmount;
+            rewardsReceived[i] = staker.rewardsReceived;
         }
 
         // Return the arrays as the result
-        return (addresses, monthsRewardedArray, stakeInitTimes, stakeAmounts);
+        return (addresses, monthsRewardedArray, stakeInitTimes, stakeAmounts, rewardsReceived);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -315,7 +321,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
     //////////////////////////////////////////////////////////////*/
 
     // Only used for foundry testing, no need to be audited since it will be deleted from the contract
-    function getStakingInfo(address staker) external view returns (uint256, uint256, uint256) {
-        return (stakingInfo[staker].stakeInitTime, stakingInfo[staker].stakeAmount, stakingInfo[staker].monthsRewarded);
+    function getStakingInfo(address staker) external view returns (uint256, uint256, uint256, uint256) {
+        return (stakingInfo[staker].stakeInitTime, stakingInfo[staker].stakeAmount, stakingInfo[staker].monthsRewarded, stakingInfo[staker].rewardsReceived);
     }
 }
