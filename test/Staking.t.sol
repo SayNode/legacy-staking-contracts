@@ -364,10 +364,10 @@ contract StakingTest is Test {
         }
 
         // Phase 6: 
-        // - 1110 days (37 months) have passed since the first 4 stakes and 1080 (36 months) for the other 3
+        // - 1200 days (40 months) have passed since the first 4 stakes and 1170 (39 months) for the other 3
         // - The first 4 stakers are no longer in the mappings so it will through an error
         // - The last 3 stakers will be ale to claim 1 month of rewards and their initial stake
-        vm.warp(initBlockTime + 37*30 days);
+        vm.warp(initBlockTime + 40*30 days);
         for(uint i = 0; i < stakerAddresses.length; i++){
             
             if(i>=4){
