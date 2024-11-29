@@ -230,6 +230,8 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
 
         if (monthsElapsed <= 3) {
             revert LockPeriodNotOver();
+        }else if(monthsElapsed > 36){
+            monthsElapsed = 36;
         }
 
         // Get the rewardable months (months after the lock period and not yet unstaked) and calculate the reward based on the monthly reward
