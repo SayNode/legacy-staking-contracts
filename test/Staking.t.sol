@@ -54,7 +54,7 @@ contract StakingTest is Test {
             )
         );
         vm.prank(Alice);
-        staking.stake(Alice, 10*10**1);
+        staking.stake(Alice, 10*10**3);
 
         //      1.b. staker is a random address
         vm.expectRevert(
@@ -64,7 +64,7 @@ contract StakingTest is Test {
             )
         );
         vm.prank(Hacker);
-        staking.stake(Alice, 10*10**1);
+        staking.stake(Alice, 10*10**3);
 
 
         // 2. stake amount is greater than 0
@@ -75,17 +75,17 @@ contract StakingTest is Test {
 
         // 3. stake is successful
         vm.prank(OwnerWallet);
-        staking.stake(Alice, 10*10**1);
+        staking.stake(Alice, 10*10**3);
         (uint256 stakeInitTime, uint256 stakeAmount, uint256 monthsRewarded, uint256 rewardsReceived) = staking.getStakingInfo(Alice);
         assertEq(stakeInitTime, block.timestamp);
-        assertEq(stakeAmount, 10*10**1);
+        assertEq(stakeAmount, 10*10**3);
         assertEq(monthsRewarded, 0);
         assertEq(rewardsReceived, 0);
 
         // 4. staker does not already have an active stake
         vm.expectRevert(Staking.StakerAlreadyExists.selector);
         vm.prank(OwnerWallet);
-        staking.stake(Alice, 10*10**1);
+        staking.stake(Alice, 10*10**3);
 
         // stake to Bob as well, 10 days latter
         vm.warp(block.timestamp + 10 days);

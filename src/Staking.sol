@@ -76,7 +76,7 @@ contract Staking is Ownable {
     */
     function stake(address stakeRecipient, uint256 stakeAmount) public onlyOwner{
 
-        if(stakeAmount <= 0){
+        if(stakeAmount <= 1_000){
             revert AmountMustBeBiggerThanaThousand();
         }
 
