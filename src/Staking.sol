@@ -22,6 +22,7 @@ contract Staking is Ownable {
         uint32 stakeInitTime;
         uint256 stakeAmount;
         uint256 rewardsReceived;
+        uint256 stakerIndex;
     }
 
     // State variables
@@ -87,7 +88,7 @@ contract Staking is Ownable {
         IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
         // Create new staker instance and map it to staker address
-        Staker memory newStaker = Staker(0, uint32(block.timestamp), stakeAmount, 0);
+        Staker memory newStaker = Staker(0, uint32(block.timestamp), stakeAmount, 0, stakersAddresses.length);
         stakingInfo[stakeRecipient] = newStaker;
 
         // Add staker address to stakersAddresses array
@@ -130,7 +131,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         }
 
         // Create new staker instance and map it to the recipient address
-        Staker memory newStaker = Staker(0, uint32(block.timestamp), amount, 0);
+        Staker memory newStaker = Staker(0, uint32(block.timestamp), amount, 0, stakersAddresses.length);
         stakingInfo[recipient] = newStaker;
 
         // Add recipient address to stakersAddresses array
@@ -185,16 +186,19 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         IERC20(token).transfer(msg.sender, reward);
 
         if (monthsElapsed >= 36){
-            // Remove the staker from the stakersAddresses array
-            for (uint256 i = 0; i < stakersAddresses.length; i++) {
-                if (stakersAddresses[i] == msg.sender) {
-                    stakersAddresses[i] = stakersAddresses[stakersAddresses.length - 1];
-                    stakersAddresses.pop();
-                    break;
-                }
-            }
+            // Get the index of the staker
+            uint256 index = stakingInfo[msg.sender].stakerIndex;
 
-            // Remove the staker from the stakingInfo mapping
+            // Replace the staker with the last staker in the array
+            uint256 lastIndex = stakersAddresses.length - 1;
+            address lastStaker = stakersAddresses[lastIndex];
+
+            stakersAddresses[index] = lastStaker; // Move last staker to the current index
+            stakingInfo[lastStaker].stakerIndex = index; // Update the moved staker's index
+
+            stakersAddresses.pop(); // Remove the last element
+
+            // Remove the staker's info
             delete stakingInfo[msg.sender];
 
             emit StakeRemoved(msg.sender);
