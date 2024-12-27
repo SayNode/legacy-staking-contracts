@@ -246,8 +246,7 @@ function stakeMultiple(address[] memory stakeRecipients, uint256[] memory stakeA
         // If the staker has been staking for 3 years, add the stake amount and the residual (what might be left from division rounding)
         //to the reward to complete the 100% reward
         if (monthsElapsed >= 36){
-            uint256 residual = stakingInfo[staker].stakeAmount - reward - stakingInfo[staker].rewardsReceived; 
-            reward = reward + stakingInfo[staker].stakeAmount + residual;
+            reward = 2 * stakingInfo[staker].stakeAmount - stakingInfo[staker].rewardsReceived;
         }
 
         return (reward, monthsElapsed, rewardableMonths);
